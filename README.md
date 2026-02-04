@@ -1,4 +1,9 @@
 # VMware Exit Intelligence Agent – Phase 1 (Read-Only)
+![Tests](https://github.com/Bolliboinapavansai/vmware-exit-intelligence-agent/actions/workflows/tests.yml/badge.svg)
+![License](https://img.shields.io/github/license/Bolliboinapavansai/vmware-exit-intelligence-agent)
+![Python](https://img.shields.io/badge/python-3.9+-blue)
+![Phase](https://img.shields.io/badge/phase-1%20locked-brightgreen)
+
 
 ## Overview
 

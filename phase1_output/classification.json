@@ -1,0 +1,90 @@
+[
+  {
+    "vm_id": "vm-001",
+    "name": "app-legacy-2008",
+    "power_state": "poweredOn",
+    "category": "keep",
+    "confidence": "high",
+    "risk_score": 35,
+    "risk_level": "Medium",
+    "reasons": [
+      "Windows Server 2008 legacy OS requires on-premises infrastructure",
+      "guest_os_legacy:+25",
+      "uptime_days>365:+10"
+    ],
+    "trace": [
+      "guest_os_legacy:+25",
+      "uptime_days>365:+10"
+    ],
+    "tags": [
+      "app:web"
+    ],
+    "rule_name": "legacy-os-detection"
+  },
+  {
+    "vm_id": "vm-002",
+    "name": "db-high-snap",
+    "power_state": "poweredOn",
+    "category": "rehost",
+    "confidence": "high",
+    "risk_score": 55,
+    "risk_level": "Medium",
+    "reasons": [
+      "Complex snapshot state (8 snapshots) requires stateful rehost; Multi-NIC configuration (4 NICs) requires careful networking planning; VMware Tools notRunning indicates operational complexity; Large disk footprint (500.0 GB) suggests stateful workload",
+      "snapshot_count>5:+20",
+      "max_snapshot_age_days>30:+15",
+      "tools_status_not_running:+10",
+      "nics>3:+10"
+    ],
+    "trace": [
+      "snapshot_count>5:+20",
+      "max_snapshot_age_days>30:+15",
+      "tools_status_not_running:+10",
+      "nics>3:+10"
+    ],
+    "tags": [
+      "role:db"
+    ],
+    "rule_name": "workload-complexity"
+  },
+  {
+    "vm_id": "vm-003",
+    "name": "legacy-centos6",
+    "power_state": "poweredOn",
+    "category": "keep",
+    "confidence": "high",
+    "risk_score": 25,
+    "risk_level": "Low",
+    "reasons": [
+      "CentOS 6 legacy OS not supported in cloud targets",
+      "guest_os_legacy:+25"
+    ],
+    "trace": [
+      "guest_os_legacy:+25"
+    ],
+    "tags": [
+      "legacy:yes"
+    ],
+    "rule_name": "legacy-os-detection"
+  },
+  {
+    "vm_id": "vm-004",
+    "name": "zombie-off",
+    "power_state": "poweredOff",
+    "category": "retire",
+    "confidence": "high",
+    "risk_score": 10,
+    "risk_level": "Low",
+    "reasons": [
+      "Powered off for 120 days; requires decommission",
+      "tools_status_not_running:+10"
+    ],
+    "trace": [
+      "tools_status_not_running:+10"
+    ],
+    "tags": [
+      "powered_off_days=120"
+    ],
+    "rule_name": "zombie-detection"
+  }
+]

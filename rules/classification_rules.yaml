@@ -1,0 +1,234 @@
+# VMware Exit Intelligence Agent - Phase 1 Classification Rules
+# READ-ONLY Decision Intelligence
+# Version: 1.0 (LOCKED for Phase 1)
+#
+# PHASE 1 CONTRACT:
+# - Read-only analysis only (no migrations, no execution)
+# - Conservative recommendations only
+# - Explainable and deterministic outputs
+# - Same input always produces same output
+#
+# RULE PRIORITY (ENFORCED ORDER):
+# 1. Zombie detection (highest priority - overrides all)
+# 2. Legacy OS constraint
+# 3. Rehost complexity
+# 4. Refactor candidate (very conservative)
+# 5. Default → keep (always matches as fallback)
+#
+# ALLOWED CATEGORIES (LOCKED):
+# - keep
+# - rehost
+# - retire
+# - refactor_candidate
+# NO OTHER CATEGORIES ALLOWED
+#
+# ============================================================================
+
+# [PRIORITY 1] ZOMBIE VM DETECTION (MANDATORY - OVERRIDES ALL)
+# Rule: Any VM powered off for > 60 days MUST be classified as retire
+# Rationale: Zombie VMs incur cost without providing value; require decommission
+- name: zombie-detection
+  priority: 1
+  category: retire
+  confidence: high
+  description: >
+    Powered off VM detected: offline for extended period (> 60 days).
+    Requires decommission or reactivation decision.
+    This rule overrides all other classification rules.
+  conditions:
+    - field: power_state
+      op: eq
+      value: "poweredOff"
+    # Note: powered_off_days check is enforced in classifier.py at runtime
+    # This rule matches if ANY poweredOff VM is encountered;
+    # classifier extracts powered_off_days tag to validate > 60 days threshold
+
+# ============================================================================
+# [PRIORITY 2] LEGACY OS CONSTRAINT (MANDATORY)
+# Rule: Legacy OS VMs MUST be kept on-premises
+# Rationale: Cloud targets don't support legacy OS; requires on-prem infrastructure
+# Affected OS: Windows Server 2008/2003, RHEL 6, CentOS 6
+
+- name: legacy-windows-2008
+  priority: 2
+  category: keep
+  confidence: high
+  description: >
+    Windows Server 2008 detected: legacy OS not supported in modern cloud.
+    Requires on-premises infrastructure.
+  conditions:
+    - field: guest_os
+      op: contains
+      value: "2008"
+
+- name: legacy-windows-2003
+  priority: 2
+  category: keep
+  confidence: high
+  description: >
+    Windows Server 2003 detected: end-of-life OS, legacy infrastructure required.
+    Requires on-premises infrastructure.
+  conditions:
+    - field: guest_os
+      op: contains
+      value: "2003"
+
+- name: legacy-rhel6
+  priority: 2
+  category: keep
+  confidence: high
+  description: >
+    RHEL 6 detected: legacy Linux distribution not supported in cloud targets.
+    Requires on-premises infrastructure.
+  conditions:
+    - field: guest_os
+      op: contains
+      value: "rhel 6"
+
+- name: legacy-centos6
+  priority: 2
+  category: keep
+  confidence: high
+  description: >
+    CentOS 6 detected: legacy Linux distribution not supported in cloud targets.
+    Requires on-premises infrastructure.
+  conditions:
+    - field: guest_os
+      op: contains
+      value: "centos 6"
+
+# ============================================================================
+# [PRIORITY 3] REHOST - COMPLEXITY SIGNALS
+# Rule: Complex/stateful workloads MUST be classified as rehost
+# Rationale: Requires careful planning; not suitable for aggressive refactoring
+# Signals: Many snapshots, snapshot age, multi-NIC, tools issues, large disk
+
+- name: too-many-snapshots
+  priority: 3
+  category: rehost
+  confidence: high
+  description: >
+    Snapshot count exceeds 5: indicates complex state management.
+    Stateful workload requires careful rehost planning.
+  conditions:
+    - field: snapshot_count
+      op: gt
+      value: 5
+
+- name: old-snapshots
+  priority: 3
+  category: rehost
+  confidence: medium
+  description: >
+    Snapshot age exceeds 30 days: indicates long-running state changes.
+    Suggests complex workload requiring careful rehost planning.
+  conditions:
+    - field: max_snapshot_age_days
+      op: gt
+      value: 30
+
+- name: multiple-nics
+  priority: 3
+  category: rehost
+  confidence: high
+  description: >
+    Network interface count exceeds 3: complex networking configuration.
+    Requires careful planning for rehost; not suitable for aggressive refactor.
+  conditions:
+    - field: nics
+      op: gt
+      value: 3
+
+- name: vmtools-offline
+  priority: 3
+  category: rehost
+  confidence: medium
+  description: >
+    VMware Tools not running: indicates operational complexity.
+    VM requires investigation before migration planning.
+  conditions:
+    - field: tools_status
+      op: neq
+      value: "running"
+
+- name: large-disk-workload
+  priority: 3
+  category: rehost
+  confidence: medium
+  description: >
+    Large disk footprint detected (> 300 GB): suggests stateful workload.
+    Requires careful planning; may involve long transfer times.
+  conditions:
+    - field: disk_gb
+      op: gt
+      value: 300
+
+# ============================================================================
+# [PRIORITY 4] REFACTOR CANDIDATE - VERY CONSERVATIVE
+# Rule: ONLY Linux VMs with low risk and minimal complexity
+# Rationale: Containerization only viable for simple, stateless workloads
+# Requirements:
+#   - Linux OS only (RHEL, CentOS, Ubuntu, Debian)
+#   - Risk score < 30 (low risk)
+#   - Single NIC (simple networking)
+#   - Small disk (< 100 GB)
+#   - No legacy OS
+#   - No major complexity signals
+#
+# Note: This rule is evaluated in classifier.py with multiple conditions.
+# No single rule in this file triggers refactor_candidate; it's a residual
+# classification after all higher-priority rules are ruled out.
+
+# ============================================================================
+# [PRIORITY 5] DEFAULT - CONSERVATIVE FALLBACK
+# Rule: Any VM not matching higher priorities defaults to keep
+# Rationale: Conservative default; unknown VMs stay on-premises
+# This rule always matches (fallback).
+
+# No explicit rule needed; classifier defaults to:
+#   category: keep
+#   confidence: medium
+#   reason: "Conservative default: keep on-premises"
+
+# ============================================================================
+# NOTES FOR MAINTAINERS
+# ============================================================================
+#
+# 1. RULE PRIORITY IS ENFORCED IN CODE
+#    The classifier.py implements priority order; rules are checked in sequence.
+#    A rule match stops evaluation at that priority level.
+#
+# 2. ZOMBIE DETECTION IS SPECIAL
+#    Zombie rule (Priority 1) is checked first and overrides all others.
+#    The powered_off_days > 60 check is enforced in classifier.py at runtime
+#    because YAML doesn't support tag extraction logic.
+#
+# 3. CATEGORY VOCABULARY IS LOCKED
+#    ONLY these 4 categories are allowed:
+#    - keep
+#    - rehost
+#    - retire
+#    - refactor_candidate
+#
+#    Any other category is a violation of Phase 1 contract.
+#    Unit tests verify this constraint.
+#
+# 4. CONFIDENCE ENUMERATION IS LOCKED
+#    ONLY these values are allowed:
+#    - high
+#    - medium
+#    - low
+#
+#    Unit tests verify this constraint.
+#
+# 5. DETERMINISM GUARANTEE
+#    Same input inventory + same rules = same output classification
+#    Unit tests verify deterministic behavior.
+#
+# 6. PHASE 1 IS READ-ONLY
+#    These rules generate recommendations only.
+#    Phase 1 produces NO migrations, NO Terraform, NO cloud execution.
+#    Phase 2 will extend with execution planning and safety gates.
+#
+# ============================================================================
+

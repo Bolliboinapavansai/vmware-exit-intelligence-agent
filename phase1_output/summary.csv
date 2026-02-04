@@ -1,0 +1,5 @@
+vm_id,name,category,confidence,risk_score,risk_level
+vm-001,app-legacy-2008,keep,high,35,Medium
+vm-002,db-high-snap,rehost,high,55,Medium
+vm-003,legacy-centos6,keep,high,25,Low
+vm-004,zombie-off,retire,high,10,Low
